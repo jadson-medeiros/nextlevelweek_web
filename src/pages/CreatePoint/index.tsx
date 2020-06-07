@@ -8,6 +8,8 @@ import { LeafletMouseEvent } from "leaflet";
 
 import axios from "axios";
 
+import Dropzone from "../../components/Dropzone";
+
 import "./styles.css";
 import logo from "../../assets/logo.svg";
 
@@ -55,9 +57,11 @@ const CreatePoint = () => {
     0,
   ]);
 
+  const [selectedFile, setSelectedFile] = useState<File>();
+
   useEffect(() => {
-    api.get("items").then((res) => {
-      setItems(res.data);
+    api.get("items").then((response) => {
+      setItems(response.data);
     });
   }, []);
 
@@ -66,8 +70,8 @@ const CreatePoint = () => {
       .get<IBGEUFResponse[]>(
         "https://servicodados.ibge.gov.br/api/v1/localidades/estados"
       )
-      .then((res) => {
-        const ufInitials = res.data.map((uf) => uf.sigla);
+      .then((response) => {
+        const ufInitials = response.data.map((uf) => uf.sigla);
 
         setUfs(ufInitials);
       });
@@ -80,8 +84,8 @@ const CreatePoint = () => {
       .get<IBGECITYResponse[]>(
         `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${selectedUf}/municipios`
       )
-      .then((res) => {
-        const cityNames = res.data.map((city) => city.nome);
+      .then((response) => {
+        const cityNames = response.data.map((city) => city.nome);
 
         setCities(cityNames);
       });
@@ -134,18 +138,20 @@ const CreatePoint = () => {
     const [latitude, longitude] = selectedPosition;
     const items = selectedItems;
 
-    const data = {
-      image:
-        "https://images.unsplash.com/photo-1542838132-92c53300491e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=400&q=60",
-      name,
-      email,
-      whatsapp,
-      uf,
-      city,
-      latitude,
-      longitude,
-      items,
-    };
+    const data = new FormData();
+
+    data.append("name", name);
+    data.append("email", email);
+    data.append("whatsapp", whatsapp);
+    data.append("uf", uf);
+    data.append("city", city);
+    data.append("latitude", String(latitude));
+    data.append("longitude", String(longitude));
+    data.append("items", items.join(","));
+
+    if (selectedFile) {
+      data.append("image", selectedFile);
+    }
 
     await api.post("/points", data);
 
@@ -163,6 +169,7 @@ const CreatePoint = () => {
       {hasSubmited ? <PointCreationSucceeded /> : null}
       <header>
         <img src={logo} alt="Ecoleta" />
+
         <Link to="/">
           <FiArrowLeft />
           Voltar para a home
@@ -173,6 +180,8 @@ const CreatePoint = () => {
         <h1>
           Cadastro do <br /> ponto de coleta
         </h1>
+
+        <Dropzone onFileUploaded={setSelectedFile} />
 
         <fieldset>
           <legend>
@@ -226,7 +235,7 @@ const CreatePoint = () => {
               <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            <Marker position={selectedPosition}></Marker>
+            <Marker position={selectedPosition} />
           </Map>
 
           <div className="field-group">
